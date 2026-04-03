@@ -1,5 +1,3 @@
-// components/header-component.js
-
 import { ADD_POSTS_PAGE, AUTH_PAGE, POSTS_PAGE } from "../routes.js";
 
 export function renderHeaderComponent({ element, user, goToPage, logout }) {

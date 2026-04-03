@@ -1,7 +1,5 @@
-// api.js
-
-const personalKey = "nika-khaimina";  // Замените на свой ключ!
-const baseHost = "https://webdev-hw-api.vercel.app";
+const personalKey = "nika-khaimina";
+const baseHost = "https://wedev-api.sky.pro";
 const postsHost = `${baseHost}/api/v1/${personalKey}/instapro`;
 
 export function getPosts({ token }) {
@@ -36,7 +34,12 @@ export function registerUser({ login, password, name, imageUrl }) {
     }),
   }).then((response) => {
     if (response.status === 400) {
-      throw new Error("Такой пользователь уже существует");
+      return response.json().then(data => {
+        throw new Error(data.message || "Такой пользователь уже существует");
+      });
+    }
+    if (response.status === 201) {
+      return response.json();
     }
     return response.json();
   });
@@ -54,7 +57,12 @@ export function loginUser({ login, password }) {
     }),
   }).then((response) => {
     if (response.status === 400) {
-      throw new Error("Неверный логин или пароль");
+      return response.json().then(data => {
+        throw new Error(data.message || "Неверный логин или пароль");
+      });
+    }
+    if (response.status === 201) {
+      return response.json();
     }
     return response.json();
   });
@@ -68,11 +76,12 @@ export function uploadImage({ file }) {
     method: "POST",
     body: data,
   }).then((response) => {
+    if (response.status === 201) {
+      return response.json();
+    }
     return response.json();
   });
 }
-
-// ========== НОВЫЕ МЕТОДЫ ==========
 
 export function addPost({ token, description, imageUrl }) {
   return fetch(postsHost, {

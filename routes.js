@@ -1,4 +1,3 @@
-/* Файл со списком страниц приложения */
 export const POSTS_PAGE = "posts";
 export const USER_POSTS_PAGE = "user-posts";
 export const AUTH_PAGE = "auth";

@@ -1,109 +1,169 @@
+import { toggleLike } from "../api.js";
 import { USER_POSTS_PAGE } from "../routes.js";
 import { renderHeaderComponent } from "./header-component.js";
-import { posts, goToPage } from "../index.js";
 
-export function renderPostsPageComponent({ appEl }) {
-  // @TODO: реализовать рендер постов из api
-  console.log("Актуальный список постов:", posts);
+// Простое форматирование даты (без date-fns)
+function formatDate(dateString) {
+  if (!dateString) return "недавно";
 
-  /**
-   * @TODO: чтобы отформатировать дату создания поста в виде "19 минут назад"
-   * можно использовать https://date-fns.org/v2.29.3/docs/formatDistanceToNow
-   */
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "только что";
+  if (diffMins < 60) return `${diffMins} ${getMinutesText(diffMins)} назад`;
+  if (diffHours < 24) return `${diffHours} ${getHoursText(diffHours)} назад`;
+  if (diffDays < 7) return `${diffDays} ${getDaysText(diffDays)} назад`;
+
+  return date.toLocaleDateString('ru-RU');
+}
+
+function getMinutesText(n) {
+  if (n % 10 === 1 && n % 100 !== 11) return "минуту";
+  if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) return "минуты";
+  return "минут";
+}
+
+function getHoursText(n) {
+  if (n % 10 === 1 && n % 100 !== 11) return "час";
+  if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) return "часа";
+  return "часов";
+}
+
+function getDaysText(n) {
+  if (n % 10 === 1 && n % 100 !== 11) return "день";
+  if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) return "дня";
+  return "дней";
+}
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+export function renderPostsPageComponent({ appEl, posts, user, goToPage, logout }) {
+  const token = user ? `Bearer ${user.token}` : undefined;
+
+  const handleLike = (postId) => {
+    if (!user) {
+      goToPage("auth");
+      return;
+    }
+
+    toggleLike({ token, postId })
+      .then(() => {
+        goToPage("posts");
+      })
+      .catch((error) => {
+        console.error("Ошибка при постановке лайка:", error);
+        alert("Не удалось поставить лайк");
+      });
+  };
+
+  const handleUserClick = (userId) => {
+    goToPage(USER_POSTS_PAGE, { userId });
+  };
+
+  if (!posts || posts.length === 0) {
+    const emptyHtml = `
+      <div class="page-container">
+        <div class="header-container"></div>
+        <p style="text-align: center; padding: 40px;">Нет постов. Будьте первым!</p>
+      </div>
+    `;
+    appEl.innerHTML = emptyHtml;
+
+    renderHeaderComponent({
+      element: document.querySelector(".header-container"),
+      user: user,
+      goToPage: goToPage,
+      logout: logout,
+    });
+    return;
+  }
+
+  const postsHtml = posts.map(post => {
+    const isLiked = post.likes?.some(like => like.id === user?.id);
+    const likesCount = post.likes?.length || 0;
+    const likeIcon = isLiked ? "./assets/images/like-active.svg" : "./assets/images/like-not-active.svg";
+    const timeAgo = formatDate(post.createdAt);
+
+    return `
+      <li class="post" data-post-id="${post.id}">
+        <div class="post-header" data-user-id="${post.user.id}" style="cursor: pointer;">
+          <img 
+            class="post-header__user-image" 
+            src="${post.user.imageUrl || "./assets/images/avatar-placeholder.png"}" 
+            alt="avatar"
+          />
+          <p class="post-header__user-name">${escapeHtml(post.user.name)}</p>
+        </div>
+        
+        <div class="post-image-container">
+          <img class="post-image" src="${post.imageUrl}" alt="post image" />
+        </div>
+        
+        <div class="post-likes">
+          <button class="like-button" data-post-id="${post.id}">
+            <img src="${likeIcon}" width="24" height="24" />
+          </button>
+          <p class="post-likes-text">
+            Нравится: <strong>${likesCount}</strong>
+          </p>
+        </div>
+        
+        <p class="post-text">
+          <span class="user-name">${escapeHtml(post.user.name)}</span>
+          ${escapeHtml(post.description)}
+        </p>
+        
+        <p class="post-date">${timeAgo}</p>
+      </li>
+    `;
+  }).join("");
+
   const appHtml = `
-              <div class="page-container">
-                <div class="header-container"></div>
-                <ul class="posts">
-                  <li class="post">
-                    <div class="post-header" data-user-id="642d00329b190443860c2f31">
-                        <img src="https://www.imgonline.com.ua/examples/bee-on-daisy.jpg" class="post-header__user-image">
-                        <p class="post-header__user-name">Иван Иваныч</p>
-                    </div>
-                    <div class="post-image-container">
-                      <img class="post-image" src="https://www.imgonline.com.ua/examples/bee-on-daisy.jpg">
-                    </div>
-                    <div class="post-likes">
-                      <button data-post-id="642d00579b190443860c2f32" class="like-button">
-                        <img src="./assets/images/like-active.svg">
-                      </button>
-                      <p class="post-likes-text">
-                        Нравится: <strong>2</strong>
-                      </p>
-                    </div>
-                    <p class="post-text">
-                      <span class="user-name">Иван Иваныч</span>
-                      Ромашка, ромашка...
-                    </p>
-                    <p class="post-date">
-                      19 минут назад
-                    </p>
-                  </li>
-                  <li class="post">
-                    <div class="post-header" data-user-id="6425602ce156b600f7858df2">
-                        <img src="https://storage.yandexcloud.net/skypro-webdev-homework-bucket/1680601502867-%25C3%2590%25C2%25A1%25C3%2590%25C2%25BD%25C3%2590%25C2%25B8%25C3%2590%25C2%25BC%25C3%2590%25C2%25BE%25C3%2590%25C2%25BA%2520%25C3%2591%25C2%258D%25C3%2590%25C2%25BA%25C3%2591%25C2%2580%25C3%2590%25C2%25B0%25C3%2590%25C2%25BD%25C3%2590%25C2%25B0%25202023-04-04%2520%25C3%2590%25C2%25B2%252014.04.29.png" class="post-header__user-image">
-                        <p class="post-header__user-name">Варварва Н.</p>
-                    </div>
-                  
-                    
-                    <div class="post-image-container">
-                      <img class="post-image" src="https://storage.yandexcloud.net/skypro-webdev-homework-bucket/1680670675451-%25C3%2590%25C2%25A1%25C3%2590%25C2%25BD%25C3%2590%25C2%25B8%25C3%2590%25C2%25BC%25C3%2590%25C2%25BE%25C3%2590%25C2%25BA%2520%25C3%2591%25C2%258D%25C3%2590%25C2%25BA%25C3%2591%25C2%2580%25C3%2590%25C2%25B0%25C3%2590%25C2%25BD%25C3%2590%25C2%25B0%25202023-03-31%2520%25C3%2590%25C2%25B2%252012.51.20.png">
-                    </div>
-                    <div class="post-likes">
-                      <button data-post-id="642cffed9b190443860c2f30" class="like-button">
-                        <img src="./assets/images/like-not-active.svg">
-                      </button>
-                      <p class="post-likes-text">
-                        Нравится: <strong>35</strong>
-                      </p>
-                    </div>
-                    <p class="post-text">
-                      <span class="user-name">Варварва Н.</span>
-                      Нарисовала картину, посмотрите какая красивая
-                    </p>
-                    <p class="post-date">
-                      3 часа назад
-                    </p>
-                  </li>
-                  <li class="post">
-                    <div class="post-header" data-user-id="6425602ce156b600f7858df2">
-                        <img src="https://storage.yandexcloud.net/skypro-webdev-homework-bucket/1680601502867-%25C3%2590%25C2%25A1%25C3%2590%25C2%25BD%25C3%2590%25C2%25B8%25C3%2590%25C2%25BC%25C3%2590%25C2%25BE%25C3%2590%25C2%25BA%2520%25C3%2591%25C2%258D%25C3%2590%25C2%25BA%25C3%2591%25C2%2580%25C3%2590%25C2%25B0%25C3%2590%25C2%25BD%25C3%2590%25C2%25B0%25202023-04-04%2520%25C3%2590%25C2%25B2%252014.04.29.png" class="post-header__user-image">
-                        <p class="post-header__user-name">Варварва Н.</p>
-                    </div>
-                  
-                    
-                    <div class="post-image-container">
-                      <img class="post-image" src="https://leonardo.osnova.io/97a160ca-76b6-5cba-87c6-84ef29136bb3/">
-                    </div>
-                    <div class="post-likes">
-                      <button data-post-id="642cf82e9b190443860c2f2b" class="like-button">
-                        <img src="./assets/images/like-not-active.svg">
-                      </button>
-                      <p class="post-likes-text">
-                        Нравится: <strong>0</strong>
-                      </p>
-                    </div>
-                    <p class="post-text">
-                      <span class="user-name">Варварва Н.</span>
-                      Голова
-                    </p>
-                    <p class="post-date">
-                      8 дней назад
-                    </p>
-                  </li>
-                </ul>
-              </div>`;
+    <div class="page-container">
+      <div class="header-container"></div>
+      <ul class="posts">
+        ${postsHtml}
+      </ul>
+    </div>
+  `;
 
   appEl.innerHTML = appHtml;
 
   renderHeaderComponent({
     element: document.querySelector(".header-container"),
+    user: user,
+    goToPage: goToPage,
+    logout: logout,
   });
 
-  for (let userEl of document.querySelectorAll(".post-header")) {
-    userEl.addEventListener("click", () => {
-      goToPage(USER_POSTS_PAGE, {
-        userId: userEl.dataset.userId,
-      });
+  const likeButtons = document.querySelectorAll(".like-button");
+  likeButtons.forEach(button => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const postId = button.dataset.postId;
+      handleLike(postId);
     });
-  }
+  });
+
+  const postHeaders = document.querySelectorAll(".post-header");
+  postHeaders.forEach(header => {
+    header.addEventListener("click", () => {
+      const userId = header.dataset.userId;
+      if (userId) {
+        handleUserClick(userId);
+      }
+    });
+  });
 }
