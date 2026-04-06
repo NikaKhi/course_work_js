@@ -1,4 +1,4 @@
-const personalKey = "nika-khaimina";
+const personalKey = "nika-khaimina"; //уникальный ключ
 const baseHost = "https://wedev-api.sky.pro";
 const postsHost = `${baseHost}/api/v1/${personalKey}/instapro`;
 
