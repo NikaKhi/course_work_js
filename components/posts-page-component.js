@@ -2,7 +2,6 @@ import { toggleLike } from "../api.js";
 import { USER_POSTS_PAGE } from "../routes.js";
 import { renderHeaderComponent } from "./header-component.js";
 
-// Простое форматирование даты (без date-fns)
 function formatDate(dateString) {
   if (!dateString) return "недавно";
 
@@ -14,9 +13,9 @@ function formatDate(dateString) {
   const diffDays = Math.floor(diffMs / 86400000);
 
   if (diffMins < 1) return "только что";
-  if (diffMins < 60) return `${diffMins} ${getMinutesText(diffMins)} назад`;
-  if (diffHours < 24) return `${diffHours} ${getHoursText(diffHours)} назад`;
-  if (diffDays < 7) return `${diffDays} ${getDaysText(diffDays)} назад`;
+  if (diffMins < 60) return diffMins + " " + getMinutesText(diffMins) + " назад";
+  if (diffHours < 24) return diffHours + " " + getHoursText(diffHours) + " назад";
+  if (diffDays < 7) return diffDays + " " + getDaysText(diffDays) + " назад";
 
   return date.toLocaleDateString('ru-RU');
 }
@@ -49,7 +48,7 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;");
 }
 
-export function renderPostsPageComponent({ appEl, posts, user, goToPage, logout }) {
+export function renderPostsPageComponent({ appEl, posts, user, goToPage, logout, renderApp, updatePosts }) {
   const token = user ? `Bearer ${user.token}` : undefined;
 
   const handleLike = (postId) => {
@@ -58,14 +57,39 @@ export function renderPostsPageComponent({ appEl, posts, user, goToPage, logout 
       return;
     }
 
-    toggleLike({ token, postId })
-      .then(() => {
-        goToPage("posts");
-      })
-      .catch((error) => {
-        console.error("Ошибка при постановке лайка:", error);
-        alert("Не удалось поставить лайк");
-      });
+    const postIndex = posts.findIndex(p => p.id === postId);
+    if (postIndex === -1) return;
+
+    const post = posts[postIndex];
+    const isLiked = post.likes?.some(like => like.id === user.id);
+
+    const updatedPost = { ...post };
+    if (isLiked) {
+      updatedPost.likes = post.likes.filter(like => like.id !== user.id);
+    } else {
+      updatedPost.likes = [...(post.likes || []), { id: user.id, name: user.name }];
+    }
+
+    const updatedPosts = [...posts];
+    updatedPosts[postIndex] = updatedPost;
+
+    if (updatePosts) {
+      updatePosts(updatedPosts);
+    } else if (renderApp) {
+      window.posts = updatedPosts;
+      renderApp();
+    }
+
+    toggleLike({ token, postId }).catch((error) => {
+      console.error("Ошибка при постановке лайка:", error);
+      if (updatePosts) {
+        updatePosts(posts);
+      } else if (renderApp) {
+        window.posts = posts;
+        renderApp();
+      }
+      alert("Не удалось поставить лайк");
+    });
   };
 
   const handleUserClick = (userId) => {

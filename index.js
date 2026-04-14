@@ -31,6 +31,79 @@ export const logout = () => {
   goToPage(POSTS_PAGE);
 };
 
+const renderApp = () => {
+  const appEl = document.getElementById("app");
+
+  if (page === LOADING_PAGE) {
+    renderLoadingPageComponent({ appEl, user, goToPage, logout });
+    return;
+  }
+
+  if (page === AUTH_PAGE) {
+    renderAuthPageComponent({
+      appEl,
+      setUser: (newUser) => {
+        user = newUser;
+        saveUserToLocalStorage(user);
+        goToPage(POSTS_PAGE);
+      },
+      user,
+      goToPage,
+      logout,
+    });
+    return;
+  }
+
+  if (page === ADD_POSTS_PAGE) {
+    renderAddPostPageComponent({
+      appEl,
+      user,
+      goToPage,
+      logout,
+      onAddPostClick: ({ description, imageUrl }) => {
+        const token = getToken();
+
+        addPost({ token, description, imageUrl })
+          .then(() => {
+            goToPage(POSTS_PAGE);
+          })
+          .catch((error) => {
+            console.error(error);
+            alert("Не удалось добавить пост: " + error.message);
+          });
+      },
+    });
+    return;
+  }
+
+  if (page === POSTS_PAGE) {
+    renderPostsPageComponent({
+      appEl,
+      posts,
+      user,
+      goToPage,
+      logout,
+      updatePosts: (newPosts) => {
+        posts = newPosts;
+        renderApp();
+      },
+      renderApp: renderApp, 
+    });
+    return;
+  }
+
+  if (page === USER_POSTS_PAGE) {
+    renderUserPostsPageComponent({
+      appEl,
+      userId: window.currentUserId,
+      user,
+      goToPage,
+      logout,
+    });
+    return;
+  }
+};
+
 export const goToPage = (newPage, data) => {
   if ([POSTS_PAGE, AUTH_PAGE, ADD_POSTS_PAGE, USER_POSTS_PAGE, LOADING_PAGE].includes(newPage)) {
 
@@ -74,72 +147,5 @@ export const goToPage = (newPage, data) => {
   throw new Error("страницы не существует");
 };
 
-const renderApp = () => {
-  const appEl = document.getElementById("app");
-
-  if (page === LOADING_PAGE) {
-    renderLoadingPageComponent({ appEl, user, goToPage, logout });
-    return;
-  }
-
-  if (page === AUTH_PAGE) {
-    renderAuthPageComponent({
-      appEl,
-      setUser: (newUser) => {
-        user = newUser;
-        saveUserToLocalStorage(user);
-        goToPage(POSTS_PAGE);
-      },
-      user,
-      goToPage,
-      logout,
-    });
-    return;
-  }
-
-  if (page === ADD_POSTS_PAGE) {
-    renderAddPostPageComponent({
-      appEl,
-      user,
-      goToPage,
-      logout,
-      onAddPostClick: ({ description, imageUrl }) => {
-        const token = getToken();
-
-        addPost({ token, description, imageUrl })
-          .then(() => {
-            goToPage(POSTS_PAGE);
-          })
-          .catch((error) => {
-            console.error(error);
-            alert("Не удалось добавить пост");
-          });
-      },
-    });
-    return;
-  }
-
-  if (page === POSTS_PAGE) {
-    renderPostsPageComponent({
-      appEl,
-      posts,
-      user,
-      goToPage,
-      logout,
-    });
-    return;
-  }
-
-  if (page === USER_POSTS_PAGE) {
-    renderUserPostsPageComponent({
-      appEl,
-      userId: window.currentUserId,
-      user,
-      goToPage,
-      logout,
-    });
-    return;
-  }
-};
-
+// Запускаем приложение
 goToPage(POSTS_PAGE);
