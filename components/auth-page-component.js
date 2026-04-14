@@ -55,7 +55,6 @@ export function renderAuthPageComponent({ appEl, setUser, user, goToPage, logout
       renderUploadImageComponent({
         element: uploadImageContainer,
         onImageUrlChange: (newImageUrl) => {
-          console.log("Фото загружено, URL:", newImageUrl);
           imageUrl = newImageUrl;
         },
       });
@@ -70,8 +69,6 @@ export function renderAuthPageComponent({ appEl, setUser, user, goToPage, logout
           const login = document.getElementById("login-input").value;
           const password = document.getElementById("password-input").value;
 
-          console.log("Попытка входа:", { login, password: "***" });
-
           if (!login || !password) {
             alert("Заполните все поля");
             return;
@@ -79,19 +76,15 @@ export function renderAuthPageComponent({ appEl, setUser, user, goToPage, logout
 
           loginUser({ login, password })
             .then((data) => {
-              console.log("Вход успешен:", data);
               setUser(data.user);
             })
             .catch((error) => {
-              console.error("Ошибка входа:", error);
               setError(error.message);
             });
         } else {
           const login = document.getElementById("login-input").value;
           const name = document.getElementById("name-input").value;
           const password = document.getElementById("password-input").value;
-
-          console.log("Попытка регистрации:", { login, name, password: "***", imageUrl });
 
           if (!login || !name || !password) {
             alert("Заполните все поля");
@@ -105,11 +98,9 @@ export function renderAuthPageComponent({ appEl, setUser, user, goToPage, logout
 
           registerUser({ login, password, name, imageUrl })
             .then((data) => {
-              console.log("Регистрация успешна:", data);
               setUser(data.user);
             })
             .catch((error) => {
-              console.error("Ошибка регистрации:", error);
               setError(error.message);
             });
         }

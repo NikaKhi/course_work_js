@@ -1,4 +1,4 @@
-const personalKey = "nika-khaimina"; //уникальный ключ
+const personalKey = "nika_khaimina123";
 const baseHost = "https://wedev-api.sky.pro";
 const postsHost = `${baseHost}/api/v1/${personalKey}/instapro`;
 
@@ -23,9 +23,6 @@ export function getPosts({ token }) {
 export function registerUser({ login, password, name, imageUrl }) {
   return fetch(baseHost + "/api/user", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify({
       login,
       password,
@@ -38,9 +35,6 @@ export function registerUser({ login, password, name, imageUrl }) {
         throw new Error(data.message || "Такой пользователь уже существует");
       });
     }
-    if (response.status === 201) {
-      return response.json();
-    }
     return response.json();
   });
 }
@@ -48,9 +42,6 @@ export function registerUser({ login, password, name, imageUrl }) {
 export function loginUser({ login, password }) {
   return fetch(baseHost + "/api/user/login", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify({
       login,
       password,
@@ -60,9 +51,6 @@ export function loginUser({ login, password }) {
       return response.json().then(data => {
         throw new Error(data.message || "Неверный логин или пароль");
       });
-    }
-    if (response.status === 201) {
-      return response.json();
     }
     return response.json();
   });
@@ -76,9 +64,6 @@ export function uploadImage({ file }) {
     method: "POST",
     body: data,
   }).then((response) => {
-    if (response.status === 201) {
-      return response.json();
-    }
     return response.json();
   });
 }
@@ -88,15 +73,19 @@ export function addPost({ token, description, imageUrl }) {
     method: "POST",
     headers: {
       Authorization: token,
-      "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      description,
-      imageUrl,
+      description: description,
+      imageUrl: imageUrl,
     }),
   }).then((response) => {
     if (response.status === 401) {
       throw new Error("Нет авторизации");
+    }
+    if (response.status === 400) {
+      return response.json().then(data => {
+        throw new Error(data.message || "Ошибка при добавлении поста");
+      });
     }
     return response.json();
   });

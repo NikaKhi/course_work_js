@@ -104,15 +104,24 @@ const renderApp = () => {
       goToPage,
       logout,
       onAddPostClick: ({ description, imageUrl }) => {
+        console.log("Данные для отправки:", { description, imageUrl });
         const token = getToken();
+        console.log("Токен:", token);
+
+        if (!token) {
+          alert("Нет авторизации. Войдите снова.");
+          goToPage(AUTH_PAGE);
+          return;
+        }
 
         addPost({ token, description, imageUrl })
-          .then(() => {
+          .then((response) => {
+            console.log("Пост добавлен:", response);
             goToPage(POSTS_PAGE);
           })
           .catch((error) => {
-            console.error(error);
-            alert("Не удалось добавить пост");
+            console.error("Ошибка добавления поста:", error);
+            alert("Не удалось добавить пост: " + error.message);
           });
       },
     });

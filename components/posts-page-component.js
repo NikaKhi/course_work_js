@@ -2,7 +2,6 @@ import { toggleLike } from "../api.js";
 import { USER_POSTS_PAGE } from "../routes.js";
 import { renderHeaderComponent } from "./header-component.js";
 
-// Простое форматирование даты (без date-fns)
 function formatDate(dateString) {
   if (!dateString) return "недавно";
 
@@ -14,9 +13,9 @@ function formatDate(dateString) {
   const diffDays = Math.floor(diffMs / 86400000);
 
   if (diffMins < 1) return "только что";
-  if (diffMins < 60) return `${diffMins} ${getMinutesText(diffMins)} назад`;
-  if (diffHours < 24) return `${diffHours} ${getHoursText(diffHours)} назад`;
-  if (diffDays < 7) return `${diffDays} ${getDaysText(diffDays)} назад`;
+  if (diffMins < 60) return diffMins + " " + getMinutesText(diffMins) + " назад";
+  if (diffHours < 24) return diffHours + " " + getHoursText(diffHours) + " назад";
+  if (diffDays < 7) return diffDays + " " + getDaysText(diffDays) + " назад";
 
   return date.toLocaleDateString('ru-RU');
 }
@@ -58,12 +57,42 @@ export function renderPostsPageComponent({ appEl, posts, user, goToPage, logout 
       return;
     }
 
+    const postIndex = posts.findIndex(p => p.id === postId);
+    if (postIndex !== -1) {
+      const post = posts[postIndex];
+      const isLiked = post.likes?.some(like => like.id === user.id);
+
+      if (isLiked) {
+        // Убираем лайк
+        post.likes = post.likes.filter(like => like.id !== user.id);
+      } else {
+        // Добавляем лайк
+        post.likes.push({ id: user.id, name: user.name });
+      }
+
+      posts[postIndex] = post;
+    }
+
+    renderApp();
+
+    // Отправляем запрос на сервер (в фоне)
     toggleLike({ token, postId })
-      .then(() => {
-        goToPage("posts");
-      })
       .catch((error) => {
         console.error("Ошибка при постановке лайка:", error);
+        // Если ошибка - откатываем изменения и перерисовываем
+        const revertIndex = posts.findIndex(p => p.id === postId);
+        if (revertIndex !== -1) {
+          const revertPost = posts[revertIndex];
+          const wasLiked = revertPost.likes?.some(like => like.id === user.id);
+
+          if (wasLiked) {
+            revertPost.likes = revertPost.likes.filter(like => like.id !== user.id);
+          } else {
+            revertPost.likes.push({ id: user.id, name: user.name });
+          }
+          posts[revertIndex] = revertPost;
+          renderApp();
+        }
         alert("Не удалось поставить лайк");
       });
   };
