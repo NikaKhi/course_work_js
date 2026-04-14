@@ -48,7 +48,7 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;");
 }
 
-export function renderPostsPageComponent({ appEl, posts, user, goToPage, logout }) {
+export function renderPostsPageComponent({ appEl, posts, user, goToPage, logout, renderApp, updatePosts }) {
   const token = user ? `Bearer ${user.token}` : undefined;
 
   const handleLike = (postId) => {
@@ -58,43 +58,38 @@ export function renderPostsPageComponent({ appEl, posts, user, goToPage, logout 
     }
 
     const postIndex = posts.findIndex(p => p.id === postId);
-    if (postIndex !== -1) {
-      const post = posts[postIndex];
-      const isLiked = post.likes?.some(like => like.id === user.id);
+    if (postIndex === -1) return;
 
-      if (isLiked) {
-        // Убираем лайк
-        post.likes = post.likes.filter(like => like.id !== user.id);
-      } else {
-        // Добавляем лайк
-        post.likes.push({ id: user.id, name: user.name });
-      }
+    const post = posts[postIndex];
+    const isLiked = post.likes?.some(like => like.id === user.id);
 
-      posts[postIndex] = post;
+    const updatedPost = { ...post };
+    if (isLiked) {
+      updatedPost.likes = post.likes.filter(like => like.id !== user.id);
+    } else {
+      updatedPost.likes = [...(post.likes || []), { id: user.id, name: user.name }];
     }
 
-    renderApp();
+    const updatedPosts = [...posts];
+    updatedPosts[postIndex] = updatedPost;
 
-    // Отправляем запрос на сервер (в фоне)
-    toggleLike({ token, postId })
-      .catch((error) => {
-        console.error("Ошибка при постановке лайка:", error);
-        // Если ошибка - откатываем изменения и перерисовываем
-        const revertIndex = posts.findIndex(p => p.id === postId);
-        if (revertIndex !== -1) {
-          const revertPost = posts[revertIndex];
-          const wasLiked = revertPost.likes?.some(like => like.id === user.id);
+    if (updatePosts) {
+      updatePosts(updatedPosts);
+    } else if (renderApp) {
+      window.posts = updatedPosts;
+      renderApp();
+    }
 
-          if (wasLiked) {
-            revertPost.likes = revertPost.likes.filter(like => like.id !== user.id);
-          } else {
-            revertPost.likes.push({ id: user.id, name: user.name });
-          }
-          posts[revertIndex] = revertPost;
-          renderApp();
-        }
-        alert("Не удалось поставить лайк");
-      });
+    toggleLike({ token, postId }).catch((error) => {
+      console.error("Ошибка при постановке лайка:", error);
+      if (updatePosts) {
+        updatePosts(posts);
+      } else if (renderApp) {
+        window.posts = posts;
+        renderApp();
+      }
+      alert("Не удалось поставить лайк");
+    });
   };
 
   const handleUserClick = (userId) => {
