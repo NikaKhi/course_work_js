@@ -55,8 +55,13 @@ export function renderAuthPageComponent({ appEl, setUser, user, goToPage, logout
       renderUploadImageComponent({
         element: uploadImageContainer,
         onImageUrlChange: (newImageUrl) => {
-          console.log("Фото загружено, URL:", newImageUrl);
           imageUrl = newImageUrl;
+          if (newImageUrl) {
+            const errorEl = appEl.querySelector(".form-error");
+            if (errorEl && errorEl.textContent === "Выберите фото") {
+              errorEl.textContent = "";
+            }
+          }
         },
       });
     }
@@ -70,20 +75,21 @@ export function renderAuthPageComponent({ appEl, setUser, user, goToPage, logout
           const login = document.getElementById("login-input").value;
           const password = document.getElementById("password-input").value;
 
-          console.log("Попытка входа:", { login, password: "***" });
+          if (!login.trim()) {
+            setError("Введите логин");
+            return;
+          }
 
-          if (!login || !password) {
-            alert("Заполните все поля");
+          if (!password) {
+            setError("Введите пароль");
             return;
           }
 
           loginUser({ login, password })
             .then((data) => {
-              console.log("Вход успешен:", data);
               setUser(data.user);
             })
             .catch((error) => {
-              console.error("Ошибка входа:", error);
               setError(error.message);
             });
         } else {
@@ -91,25 +97,36 @@ export function renderAuthPageComponent({ appEl, setUser, user, goToPage, logout
           const name = document.getElementById("name-input").value;
           const password = document.getElementById("password-input").value;
 
-          console.log("Попытка регистрации:", { login, name, password: "***", imageUrl });
+          if (!name.trim()) {
+            setError("Введите имя");
+            return;
+          }
 
-          if (!login || !name || !password) {
-            alert("Заполните все поля");
+          if (!login.trim()) {
+            setError("Введите логин");
+            return;
+          }
+
+          if (!password) {
+            setError("Введите пароль");
+            return;
+          }
+
+          if (password.length < 3) {
+            setError("Пароль должен быть не менее 3 символов");
             return;
           }
 
           if (!imageUrl) {
-            alert("Выберите фото");
+            setError("Выберите фото");
             return;
           }
 
           registerUser({ login, password, name, imageUrl })
             .then((data) => {
-              console.log("Регистрация успешна:", data);
               setUser(data.user);
             })
             .catch((error) => {
-              console.error("Ошибка регистрации:", error);
               setError(error.message);
             });
         }
@@ -120,6 +137,7 @@ export function renderAuthPageComponent({ appEl, setUser, user, goToPage, logout
     if (toggleButton) {
       toggleButton.addEventListener("click", () => {
         isLoginMode = !isLoginMode;
+        imageUrl = "";
         renderForm();
       });
     }

@@ -4,6 +4,12 @@ import { renderUploadImageComponent } from "./upload-image-component.js";
 export function renderAddPostPageComponent({ appEl, user, goToPage, logout, onAddPostClick }) {
   let imageUrl = "";
   let description = "";
+  let errorMessage = "";
+
+  const showError = (message) => {
+    errorMessage = message;
+    render();
+  };
 
   const render = () => {
     const appHtml = `
@@ -19,9 +25,10 @@ export function renderAddPostPageComponent({ appEl, user, goToPage, logout, onAd
               placeholder="Введите описание поста..."
               rows="4"
             ></textarea>
+            ${errorMessage ? `<div class="form-error" style="color: red; margin-top: 10px;">${errorMessage}</div>` : ""}
           </div>
           <div class="form-footer">
-            <button id="submit-post-button" class="button" disabled>Опубликовать</button>
+            <button id="submit-post-button" class="button" ${!imageUrl ? 'disabled' : ''}>Опубликовать</button>
             <button id="cancel-button" class="secondary-button">Отмена</button>
           </div>
         </div>
@@ -43,10 +50,12 @@ export function renderAddPostPageComponent({ appEl, user, goToPage, logout, onAd
         element: uploadContainer,
         onImageUrlChange: (url) => {
           imageUrl = url;
+          errorMessage = "";
           const submitButton = document.getElementById("submit-post-button");
           if (submitButton) {
             submitButton.disabled = !imageUrl;
           }
+          render();
         },
       });
     }
@@ -55,6 +64,10 @@ export function renderAddPostPageComponent({ appEl, user, goToPage, logout, onAd
     if (descriptionTextarea) {
       descriptionTextarea.addEventListener("input", (event) => {
         description = event.target.value;
+        if (errorMessage) {
+          errorMessage = "";
+          render();
+        }
       });
     }
 
@@ -62,7 +75,12 @@ export function renderAddPostPageComponent({ appEl, user, goToPage, logout, onAd
     if (submitButton) {
       submitButton.addEventListener("click", () => {
         if (!imageUrl) {
-          alert("Сначала загрузите изображение");
+          showError("Выберите фото для поста");
+          return;
+        }
+
+        if (!description.trim()) {
+          showError("Введите описание поста");
           return;
         }
 

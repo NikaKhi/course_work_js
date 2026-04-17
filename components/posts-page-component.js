@@ -2,7 +2,6 @@ import { toggleLike } from "../api.js";
 import { USER_POSTS_PAGE } from "../routes.js";
 import { renderHeaderComponent } from "./header-component.js";
 
-// Простое форматирование даты (без date-fns)
 function formatDate(dateString) {
   if (!dateString) return "недавно";
 
@@ -14,9 +13,9 @@ function formatDate(dateString) {
   const diffDays = Math.floor(diffMs / 86400000);
 
   if (diffMins < 1) return "только что";
-  if (diffMins < 60) return `${diffMins} ${getMinutesText(diffMins)} назад`;
-  if (diffHours < 24) return `${diffHours} ${getHoursText(diffHours)} назад`;
-  if (diffDays < 7) return `${diffDays} ${getDaysText(diffDays)} назад`;
+  if (diffMins < 60) return diffMins + " " + getMinutesText(diffMins) + " назад";
+  if (diffHours < 24) return diffHours + " " + getHoursText(diffHours) + " назад";
+  if (diffDays < 7) return diffDays + " " + getDaysText(diffDays) + " назад";
 
   return date.toLocaleDateString('ru-RU');
 }
@@ -49,7 +48,7 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;");
 }
 
-export function renderPostsPageComponent({ appEl, posts, user, goToPage, logout }) {
+export function renderPostsPageComponent({ appEl, posts, user, goToPage, logout, renderApp }) {
   const token = user ? `Bearer ${user.token}` : undefined;
 
   const handleLike = (postId) => {
@@ -58,17 +57,53 @@ export function renderPostsPageComponent({ appEl, posts, user, goToPage, logout 
       return;
     }
 
+    console.log("Нажат лайк для поста:", postId);
+
+    // Сразу меняем иконку локально (оптимистичное обновление)
+    const postIndex = posts.findIndex(p => p.id === postId);
+    if (postIndex !== -1) {
+      const post = posts[postIndex];
+      const isLiked = post.likes?.some(like => like.id === user.id);
+
+      if (isLiked) {
+        post.likes = post.likes.filter(like => like.id !== user.id);
+      } else {
+        post.likes = [...(post.likes || []), { id: user.id, name: user.name }];
+      }
+
+      // Обновляем глобальный массив
+      window.posts = [...posts];
+
+      // Перерисовываем страницу сразу
+      if (renderApp) {
+        renderApp();
+      }
+    }
+
+    // Отправляем запрос на сервер
     toggleLike({ token, postId })
       .then(() => {
-        goToPage("posts");
+        console.log("Лайк отправлен успешно, обновляем данные с сервера");
+        // Запрашиваем свежие данные с сервера
+        import("../api.js").then(({ getPosts }) => {
+          getPosts({ token }).then((freshPosts) => {
+            window.posts = freshPosts;
+            if (renderApp) {
+              renderApp();
+            }
+          });
+        });
       })
       .catch((error) => {
         console.error("Ошибка при постановке лайка:", error);
-        alert("Не удалось поставить лайк");
+        alert("Не удалось поставить лайк: " + error.message);
+        // Откатываем изменения
+        goToPage("posts");
       });
   };
 
   const handleUserClick = (userId) => {
+    console.log("Клик по пользователю, userId:", userId);
     goToPage(USER_POSTS_PAGE, { userId });
   };
 
@@ -113,7 +148,7 @@ export function renderPostsPageComponent({ appEl, posts, user, goToPage, logout 
         
         <div class="post-likes">
           <button class="like-button" data-post-id="${post.id}">
-            <img src="${likeIcon}" width="24" height="24" />
+            <img src="${likeIcon}?t=${Date.now()}" width="24" height="24" />
           </button>
           <p class="post-likes-text">
             Нравится: <strong>${likesCount}</strong>
