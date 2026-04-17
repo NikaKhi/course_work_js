@@ -56,6 +56,12 @@ export function renderAuthPageComponent({ appEl, setUser, user, goToPage, logout
         element: uploadImageContainer,
         onImageUrlChange: (newImageUrl) => {
           imageUrl = newImageUrl;
+          if (newImageUrl) {
+            const errorEl = appEl.querySelector(".form-error");
+            if (errorEl && errorEl.textContent === "Выберите фото") {
+              errorEl.textContent = "";
+            }
+          }
         },
       });
     }
@@ -69,8 +75,13 @@ export function renderAuthPageComponent({ appEl, setUser, user, goToPage, logout
           const login = document.getElementById("login-input").value;
           const password = document.getElementById("password-input").value;
 
-          if (!login || !password) {
-            alert("Заполните все поля");
+          if (!login.trim()) {
+            setError("Введите логин");
+            return;
+          }
+
+          if (!password) {
+            setError("Введите пароль");
             return;
           }
 
@@ -86,13 +97,28 @@ export function renderAuthPageComponent({ appEl, setUser, user, goToPage, logout
           const name = document.getElementById("name-input").value;
           const password = document.getElementById("password-input").value;
 
-          if (!login || !name || !password) {
-            alert("Заполните все поля");
+          if (!name.trim()) {
+            setError("Введите имя");
+            return;
+          }
+
+          if (!login.trim()) {
+            setError("Введите логин");
+            return;
+          }
+
+          if (!password) {
+            setError("Введите пароль");
+            return;
+          }
+
+          if (password.length < 3) {
+            setError("Пароль должен быть не менее 3 символов");
             return;
           }
 
           if (!imageUrl) {
-            alert("Выберите фото");
+            setError("Выберите фото");
             return;
           }
 
@@ -111,6 +137,7 @@ export function renderAuthPageComponent({ appEl, setUser, user, goToPage, logout
     if (toggleButton) {
       toggleButton.addEventListener("click", () => {
         isLoginMode = !isLoginMode;
+        imageUrl = "";
         renderForm();
       });
     }

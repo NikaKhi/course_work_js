@@ -92,32 +92,48 @@ export function addPost({ token, description, imageUrl }) {
 }
 
 export function getUserPosts({ token, userId }) {
-  return fetch(`${postsHost}/user/${userId}`, {
-    method: "GET",
-    headers: {
-      Authorization: token,
-    },
-  }).then((response) => {
-    if (response.status === 401) {
-      throw new Error("Нет авторизации");
-    }
-    if (response.status === 404) {
-      throw new Error("Пользователь не найден");
-    }
-    return response.json();
-  });
+  console.log("Запрос постов пользователя:", { userId });
+
+  // Получаем все посты и фильтруем по userId
+  return getPosts({ token })
+    .then((allPosts) => {
+      const userPosts = allPosts.filter(post => post.user.id === userId);
+      console.log("Найдено постов для пользователя:", userPosts.length);
+
+      // Получаем информацию о пользователе из первого поста
+      let userInfo = { id: userId, name: "Пользователь", imageUrl: null };
+      if (userPosts.length > 0 && userPosts[0].user) {
+        userInfo = userPosts[0].user;
+      }
+
+      return {
+        user: userInfo,
+        posts: userPosts,
+      };
+    })
+    .catch((error) => {
+      console.error("Ошибка при получении постов пользователя:", error);
+      throw new Error("Не удалось загрузить посты пользователя");
+    });
 }
 
 export function toggleLike({ token, postId }) {
+  console.log("Отправка лайка:", { postId });
+
   return fetch(`${postsHost}/${postId}/like`, {
     method: "POST",
     headers: {
       Authorization: token,
     },
-  }).then((response) => {
-    if (response.status === 401) {
-      throw new Error("Нет авторизации");
-    }
-    return response.json();
-  });
+  })
+    .then(async (response) => {
+      console.log("Статус ответа лайка:", response.status);
+      const data = await response.json();
+      console.log("Ответ сервера лайка:", data);
+
+      if (response.status === 401) {
+        throw new Error("Нет авторизации");
+      }
+      return data;
+    });
 }

@@ -1,3 +1,5 @@
+// index.js
+
 import { getPosts, addPost } from "./api.js";
 import { renderAddPostPageComponent } from "./components/add-post-page-component.js";
 import { renderAuthPageComponent } from "./components/auth-page-component.js";
@@ -20,6 +22,7 @@ import {
 export let user = getUserFromLocalStorage();
 export let page = null;
 export let posts = [];
+window.posts = posts;
 
 const getToken = () => {
   return user ? `Bearer ${user.token}` : undefined;
@@ -83,11 +86,7 @@ const renderApp = () => {
       user,
       goToPage,
       logout,
-      updatePosts: (newPosts) => {
-        posts = newPosts;
-        renderApp();
-      },
-      renderApp: renderApp, 
+      renderApp: renderApp,
     });
     return;
   }
@@ -121,12 +120,14 @@ export const goToPage = (newPage, data) => {
         .then((newPosts) => {
           page = POSTS_PAGE;
           posts = newPosts;
+          window.posts = newPosts;
           renderApp();
         })
         .catch((error) => {
           console.error(error);
           page = POSTS_PAGE;
           posts = [];
+          window.posts = [];
           renderApp();
         });
       return;
@@ -147,5 +148,4 @@ export const goToPage = (newPage, data) => {
   throw new Error("страницы не существует");
 };
 
-// Запускаем приложение
 goToPage(POSTS_PAGE);
