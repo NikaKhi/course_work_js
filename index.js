@@ -1,5 +1,3 @@
-// index.js
-
 import { getPosts, addPost } from "./api.js";
 import { renderAddPostPageComponent } from "./components/add-post-page-component.js";
 import { renderAuthPageComponent } from "./components/auth-page-component.js";
@@ -46,6 +44,10 @@ const renderApp = () => {
     renderAuthPageComponent({
       appEl,
       setUser: (newUser) => {
+        console.log("Устанавливаем пользователя:", newUser);
+        if (newUser && !newUser.id && newUser._id) {
+          newUser.id = newUser._id;
+        }
         user = newUser;
         saveUserToLocalStorage(user);
         goToPage(POSTS_PAGE);
@@ -68,6 +70,11 @@ const renderApp = () => {
 
         addPost({ token, description, imageUrl })
           .then(() => {
+            return getPosts({ token });
+          })
+          .then((newPosts) => {
+            posts = newPosts;
+            window.posts = newPosts;
             goToPage(POSTS_PAGE);
           })
           .catch((error) => {

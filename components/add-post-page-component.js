@@ -1,6 +1,16 @@
 import { renderHeaderComponent } from "./header-component.js";
 import { renderUploadImageComponent } from "./upload-image-component.js";
 
+function escapeHtml(str) {
+  if (!str) return "";
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export function renderAddPostPageComponent({ appEl, user, goToPage, logout, onAddPostClick }) {
   let imageUrl = "";
   let description = "";
@@ -8,7 +18,11 @@ export function renderAddPostPageComponent({ appEl, user, goToPage, logout, onAd
 
   const showError = (message) => {
     errorMessage = message;
-    render();
+    const errorEl = document.querySelector(".form-error");
+    if (errorEl) {
+      errorEl.textContent = message;
+      errorEl.style.display = "block";
+    }
   };
 
   const render = () => {
@@ -24,8 +38,8 @@ export function renderAddPostPageComponent({ appEl, user, goToPage, logout, onAd
               class="input textarea" 
               placeholder="Введите описание поста..."
               rows="4"
-            ></textarea>
-            ${errorMessage ? `<div class="form-error" style="color: red; margin-top: 10px;">${errorMessage}</div>` : ""}
+            >${escapeHtml(description)}</textarea>
+            <div class="form-error" style="color: red; margin-top: 10px; ${!errorMessage ? 'display: none;' : ''}">${errorMessage || ''}</div>
           </div>
           <div class="form-footer">
             <button id="submit-post-button" class="button" ${!imageUrl ? 'disabled' : ''}>Опубликовать</button>
@@ -55,18 +69,27 @@ export function renderAddPostPageComponent({ appEl, user, goToPage, logout, onAd
           if (submitButton) {
             submitButton.disabled = !imageUrl;
           }
-          render();
+          const errorEl = document.querySelector(".form-error");
+          if (errorEl) {
+            errorEl.style.display = "none";
+            errorEl.textContent = "";
+          }
         },
       });
     }
 
     const descriptionTextarea = document.getElementById("post-description");
     if (descriptionTextarea) {
+      descriptionTextarea.value = description;
       descriptionTextarea.addEventListener("input", (event) => {
         description = event.target.value;
         if (errorMessage) {
           errorMessage = "";
-          render();
+          const errorEl = document.querySelector(".form-error");
+          if (errorEl) {
+            errorEl.style.display = "none";
+            errorEl.textContent = "";
+          }
         }
       });
     }

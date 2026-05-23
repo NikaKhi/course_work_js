@@ -87,6 +87,15 @@ export function renderAuthPageComponent({ appEl, setUser, user, goToPage, logout
 
           loginUser({ login, password })
             .then((data) => {
+              console.log("Данные после входа:", data);
+              console.log("Пользователь:", data.user);
+              console.log("ID пользователя:", data.user?.id);
+
+              // Убеждаемся, что у пользователя есть id
+              if (data.user && !data.user.id && data.user._id) {
+                data.user.id = data.user._id;
+              }
+
               setUser(data.user);
             })
             .catch((error) => {
@@ -124,6 +133,14 @@ export function renderAuthPageComponent({ appEl, setUser, user, goToPage, logout
 
           registerUser({ login, password, name, imageUrl })
             .then((data) => {
+              console.log("Данные после регистрации:", data);
+              console.log("Пользователь:", data.user);
+              console.log("ID пользователя:", data.user?.id);
+
+              if (data.user && !data.user.id && data.user._id) {
+                data.user.id = data.user._id;
+              }
+
               setUser(data.user);
             })
             .catch((error) => {

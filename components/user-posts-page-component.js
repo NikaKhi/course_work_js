@@ -23,7 +23,6 @@ export function renderUserPostsPageComponent({ appEl, userId, user, goToPage, lo
     return;
   }
 
-  // Показываем загрузку
   appEl.innerHTML = `
     <div class="page-container">
       <div class="header-container"></div>
@@ -40,15 +39,21 @@ export function renderUserPostsPageComponent({ appEl, userId, user, goToPage, lo
     logout: logout,
   });
 
-  getUserPosts({ token, userId })
+  const loadUserPosts = () => {
+    return getUserPosts({ token, userId });
+  };
+
+  loadUserPosts()
     .then((data) => {
       console.log("Данные получены:", data);
 
       const userInfo = data.user;
-      const userPosts = data.posts || [];
+      let currentPosts = data.posts || [];
 
-      appEl.innerHTML = `
-        <div class="page-container">
+      const renderUserContent = () => {
+        const containerDiv = document.createElement("div");
+        containerDiv.className = "page-container";
+        containerDiv.innerHTML = `
           <div class="header-container"></div>
           <div class="posts-user-header">
             <img 
@@ -59,33 +64,47 @@ export function renderUserPostsPageComponent({ appEl, userId, user, goToPage, lo
             <h1 class="posts-user-header__user-name">${escapeHtml(userInfo.name)}</h1>
           </div>
           <div id="user-posts-container"></div>
-        </div>
-      `;
+        `;
 
-      renderHeaderComponent({
-        element: document.querySelector(".header-container"),
-        user: user,
-        goToPage: goToPage,
-        logout: logout,
-      });
+        appEl.innerHTML = "";
+        appEl.appendChild(containerDiv);
 
-      const postsContainer = document.getElementById("user-posts-container");
-      if (postsContainer) {
-        if (userPosts.length === 0) {
-          postsContainer.innerHTML = '<p style="text-align: center; padding: 40px;">У пользователя пока нет постов</p>';
-        } else {
-          renderPostsPageComponent({
-            appEl: postsContainer,
-            posts: userPosts,
-            user: user,
-            goToPage: goToPage,
-            logout: logout,
-            renderApp: () => {
-              renderUserPostsPageComponent({ appEl, userId, user, goToPage, logout });
-            },
-          });
+        renderHeaderComponent({
+          element: document.querySelector(".header-container"),
+          user: user,
+          goToPage: goToPage,
+          logout: logout,
+        });
+
+        const postsContainer = document.getElementById("user-posts-container");
+        if (postsContainer) {
+          if (currentPosts.length === 0) {
+            postsContainer.innerHTML = '<p style="text-align: center; padding: 40px;">У пользователя пока нет постов</p>';
+          } else {
+            renderPostsPageComponent({
+              appEl: postsContainer,
+              posts: currentPosts,
+              user: user,
+              goToPage: goToPage,
+              logout: logout,
+              renderApp: () => {
+                loadUserPosts()
+                  .then((newData) => {
+                    currentPosts = newData.posts || [];
+                    renderUserContent();
+                  })
+                  .catch((error) => {
+                    console.error("Ошибка обновления:", error);
+                  });
+              },
+              isUserPostsPage: true,
+              userId: userId,
+            });
+          }
         }
-      }
+      };
+
+      renderUserContent();
     })
     .catch((error) => {
       console.error("Ошибка загрузки постов пользователя:", error);
