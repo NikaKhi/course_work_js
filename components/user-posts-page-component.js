@@ -3,24 +3,27 @@ import { renderHeaderComponent } from "./header-component.js";
 import { renderPostsPageComponent } from "./posts-page-component.js";
 
 function escapeHtml(str) {
-    if (!str) return "";
-    return str
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
+  if (!str) return "";
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 export function renderUserPostsPageComponent({ appEl, userId, user, goToPage, logout }) {
-    const token = user ? `Bearer ${user.token}` : undefined;
+  const token = user ? `Bearer ${user.token}` : undefined;
 
-    if (!userId) {
-        goToPage("posts");
-        return;
-    }
+  console.log("renderUserPostsPageComponent вызван, userId:", userId);
 
-    appEl.innerHTML = `
+  if (!userId) {
+    console.error("Нет userId, возвращаемся на главную");
+    goToPage("posts");
+    return;
+  }
+
+  appEl.innerHTML = `
     <div class="page-container">
       <div class="header-container"></div>
       <div class="loading-page">
@@ -29,20 +32,28 @@ export function renderUserPostsPageComponent({ appEl, userId, user, goToPage, lo
     </div>
   `;
 
-    renderHeaderComponent({
-        element: document.querySelector(".header-container"),
-        user: user,
-        goToPage: goToPage,
-        logout: logout,
-    });
+  renderHeaderComponent({
+    element: document.querySelector(".header-container"),
+    user: user,
+    goToPage: goToPage,
+    logout: logout,
+  });
 
-    getUserPosts({ token, userId })
-        .then((data) => {
-            const userInfo = data.user;
-            const userPosts = data.posts || [];
+  const loadUserPosts = () => {
+    return getUserPosts({ token, userId });
+  };
 
-            appEl.innerHTML = `
-        <div class="page-container">
+  loadUserPosts()
+    .then((data) => {
+      console.log("Данные получены:", data);
+
+      const userInfo = data.user;
+      let currentPosts = data.posts || [];
+
+      const renderUserContent = () => {
+        const containerDiv = document.createElement("div");
+        containerDiv.className = "page-container";
+        containerDiv.innerHTML = `
           <div class="header-container"></div>
           <div class="posts-user-header">
             <img 
@@ -53,51 +64,72 @@ export function renderUserPostsPageComponent({ appEl, userId, user, goToPage, lo
             <h1 class="posts-user-header__user-name">${escapeHtml(userInfo.name)}</h1>
           </div>
           <div id="user-posts-container"></div>
-        </div>
-      `;
+        `;
 
-            renderHeaderComponent({
-                element: document.querySelector(".header-container"),
-                user: user,
-                goToPage: goToPage,
-                logout: logout,
+        appEl.innerHTML = "";
+        appEl.appendChild(containerDiv);
+
+        renderHeaderComponent({
+          element: document.querySelector(".header-container"),
+          user: user,
+          goToPage: goToPage,
+          logout: logout,
+        });
+
+        const postsContainer = document.getElementById("user-posts-container");
+        if (postsContainer) {
+          if (currentPosts.length === 0) {
+            postsContainer.innerHTML = '<p style="text-align: center; padding: 40px;">У пользователя пока нет постов</p>';
+          } else {
+            renderPostsPageComponent({
+              appEl: postsContainer,
+              posts: currentPosts,
+              user: user,
+              goToPage: goToPage,
+              logout: logout,
+              renderApp: () => {
+                loadUserPosts()
+                  .then((newData) => {
+                    currentPosts = newData.posts || [];
+                    renderUserContent();
+                  })
+                  .catch((error) => {
+                    console.error("Ошибка обновления:", error);
+                  });
+              },
+              isUserPostsPage: true,
+              userId: userId,
             });
+          }
+        }
+      };
 
-            const postsContainer = document.getElementById("user-posts-container");
-            if (postsContainer) {
-                renderPostsPageComponent({
-                    appEl: postsContainer,
-                    posts: userPosts,
-                    user: user,
-                    goToPage: goToPage,
-                    logout: logout,
-                });
-            }
-        })
-        .catch((error) => {
-            console.error("Ошибка загрузки постов пользователя:", error);
-            appEl.innerHTML = `
+      renderUserContent();
+    })
+    .catch((error) => {
+      console.error("Ошибка загрузки постов пользователя:", error);
+      appEl.innerHTML = `
         <div class="page-container">
           <div class="header-container"></div>
           <p style="text-align: center; color: red; padding: 40px;">
-            Не удалось загрузить посты пользователя
+            Не удалось загрузить посты пользователя: ${error.message}
           </p>
           <button class="button" id="back-button" style="margin: 0 auto; display: block;">Назад</button>
         </div>
       `;
 
-            renderHeaderComponent({
-                element: document.querySelector(".header-container"),
-                user: user,
-                goToPage: goToPage,
-                logout: logout,
-            });
+      renderHeaderComponent({
+        element: document.querySelector(".header-container"),
+        user: user,
+        goToPage: goToPage,
+        logout: logout,
+      });
 
-            const backButton = document.getElementById("back-button");
-            if (backButton) {
-                backButton.addEventListener("click", () => {
-                    goToPage("posts");
-                });
-            }
+      const backButton = document.getElementById("back-button");
+      if (backButton) {
+        backButton.addEventListener("click", () => {
+          goToPage("posts");
         });
+      }
+    });
 }

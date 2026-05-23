@@ -20,6 +20,7 @@ import {
 export let user = getUserFromLocalStorage();
 export let page = null;
 export let posts = [];
+window.posts = posts;
 
 const getToken = () => {
   return user ? `Bearer ${user.token}` : undefined;
@@ -29,49 +30,6 @@ export const logout = () => {
   user = null;
   removeUserFromLocalStorage();
   goToPage(POSTS_PAGE);
-};
-
-export const goToPage = (newPage, data) => {
-  if ([POSTS_PAGE, AUTH_PAGE, ADD_POSTS_PAGE, USER_POSTS_PAGE, LOADING_PAGE].includes(newPage)) {
-
-    if (newPage === ADD_POSTS_PAGE) {
-      page = user ? ADD_POSTS_PAGE : AUTH_PAGE;
-      renderApp();
-      return;
-    }
-
-    if (newPage === POSTS_PAGE) {
-      page = LOADING_PAGE;
-      renderApp();
-
-      getPosts({ token: getToken() })
-        .then((newPosts) => {
-          page = POSTS_PAGE;
-          posts = newPosts;
-          renderApp();
-        })
-        .catch((error) => {
-          console.error(error);
-          page = POSTS_PAGE;
-          posts = [];
-          renderApp();
-        });
-      return;
-    }
-
-    if (newPage === USER_POSTS_PAGE) {
-      page = USER_POSTS_PAGE;
-      window.currentUserId = data?.userId;
-      renderApp();
-      return;
-    }
-
-    page = newPage;
-    renderApp();
-    return;
-  }
-
-  throw new Error("страницы не существует");
 };
 
 const renderApp = () => {
@@ -86,6 +44,10 @@ const renderApp = () => {
     renderAuthPageComponent({
       appEl,
       setUser: (newUser) => {
+        console.log("Устанавливаем пользователя:", newUser);
+        if (newUser && !newUser.id && newUser._id) {
+          newUser.id = newUser._id;
+        }
         user = newUser;
         saveUserToLocalStorage(user);
         goToPage(POSTS_PAGE);
@@ -108,11 +70,16 @@ const renderApp = () => {
 
         addPost({ token, description, imageUrl })
           .then(() => {
+            return getPosts({ token });
+          })
+          .then((newPosts) => {
+            posts = newPosts;
+            window.posts = newPosts;
             goToPage(POSTS_PAGE);
           })
           .catch((error) => {
             console.error(error);
-            alert("Не удалось добавить пост");
+            alert("Не удалось добавить пост: " + error.message);
           });
       },
     });
@@ -126,6 +93,7 @@ const renderApp = () => {
       user,
       goToPage,
       logout,
+      renderApp: renderApp,
     });
     return;
   }
@@ -140,6 +108,51 @@ const renderApp = () => {
     });
     return;
   }
+};
+
+export const goToPage = (newPage, data) => {
+  if ([POSTS_PAGE, AUTH_PAGE, ADD_POSTS_PAGE, USER_POSTS_PAGE, LOADING_PAGE].includes(newPage)) {
+
+    if (newPage === ADD_POSTS_PAGE) {
+      page = user ? ADD_POSTS_PAGE : AUTH_PAGE;
+      renderApp();
+      return;
+    }
+
+    if (newPage === POSTS_PAGE) {
+      page = LOADING_PAGE;
+      renderApp();
+
+      getPosts({ token: getToken() })
+        .then((newPosts) => {
+          page = POSTS_PAGE;
+          posts = newPosts;
+          window.posts = newPosts;
+          renderApp();
+        })
+        .catch((error) => {
+          console.error(error);
+          page = POSTS_PAGE;
+          posts = [];
+          window.posts = [];
+          renderApp();
+        });
+      return;
+    }
+
+    if (newPage === USER_POSTS_PAGE) {
+      page = USER_POSTS_PAGE;
+      window.currentUserId = data?.userId;
+      renderApp();
+      return;
+    }
+
+    page = newPage;
+    renderApp();
+    return;
+  }
+
+  throw new Error("страницы не существует");
 };
 
 goToPage(POSTS_PAGE);

@@ -1,8 +1,7 @@
-import { toggleLike } from "../api.js";
+import { toggleLike, getUserPosts, getPosts } from "../api.js";
 import { USER_POSTS_PAGE } from "../routes.js";
 import { renderHeaderComponent } from "./header-component.js";
 
-// Простое форматирование даты (без date-fns)
 function formatDate(dateString) {
   if (!dateString) return "недавно";
 
@@ -14,9 +13,9 @@ function formatDate(dateString) {
   const diffDays = Math.floor(diffMs / 86400000);
 
   if (diffMins < 1) return "только что";
-  if (diffMins < 60) return `${diffMins} ${getMinutesText(diffMins)} назад`;
-  if (diffHours < 24) return `${diffHours} ${getHoursText(diffHours)} назад`;
-  if (diffDays < 7) return `${diffDays} ${getDaysText(diffDays)} назад`;
+  if (diffMins < 60) return diffMins + " " + getMinutesText(diffMins) + " назад";
+  if (diffHours < 24) return diffHours + " " + getHoursText(diffHours) + " назад";
+  if (diffDays < 7) return diffDays + " " + getDaysText(diffDays) + " назад";
 
   return date.toLocaleDateString('ru-RU');
 }
@@ -49,8 +48,43 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;");
 }
 
-export function renderPostsPageComponent({ appEl, posts, user, goToPage, logout }) {
+export function renderPostsPageComponent({ appEl, posts, user, goToPage, logout, renderApp, isUserPostsPage = false, userId = null }) {
   const token = user ? `Bearer ${user.token}` : undefined;
+
+  const isPostLikedByUser = (post) => {
+    if (!user || !post.likes) return false;
+    if (!user.id) {
+      console.warn("У пользователя нет id!", user);
+      return false;
+    }
+    return post.likes.some(like => {
+      const likeId = typeof like === 'object' ? like.id : like;
+      return likeId === user.id;
+    });
+  };
+
+  const getLikesCount = (post) => {
+    return post.likes?.length || 0;
+  };
+
+  const updatePostUI = (postId, updatedPost) => {
+    const postElement = document.querySelector(`.post[data-post-id="${postId}"]`);
+    if (!postElement) return;
+
+    const isLiked = isPostLikedByUser(updatedPost);
+    const likesCount = getLikesCount(updatedPost);
+    const likeIcon = isLiked ? "./assets/images/like-active.svg" : "./assets/images/like-not-active.svg";
+
+    const likeButton = postElement.querySelector(".like-button img");
+    if (likeButton) {
+      likeButton.src = likeIcon;
+    }
+
+    const likesText = postElement.querySelector(".post-likes-text strong");
+    if (likesText) {
+      likesText.textContent = likesCount;
+    }
+  };
 
   const handleLike = (postId) => {
     if (!user) {
@@ -58,18 +92,91 @@ export function renderPostsPageComponent({ appEl, posts, user, goToPage, logout 
       return;
     }
 
+    if (!user.id && user._id) {
+      user.id = user._id;
+    }
+
+    if (!user.id) {
+      console.error("У пользователя нет id!", user);
+      alert("Ошибка: у пользователя нет ID. Выйдите и зайдите снова.");
+      return;
+    }
+
+    console.log("=== НАЖАТ ЛАЙК ===");
+    console.log("postId:", postId);
+    console.log("userId:", user.id);
+
+    const postIndex = posts.findIndex(p => p.id === postId);
+    if (postIndex === -1) return;
+
+    const post = posts[postIndex];
+    const wasLiked = isPostLikedByUser(post);
+
+    console.log("wasLiked:", wasLiked);
+
+    let newLikes;
+    if (wasLiked) {
+      newLikes = post.likes.filter(like => {
+        const likeId = typeof like === 'object' ? like.id : like;
+        return likeId !== user.id;
+      });
+    } else {
+      newLikes = [...(post.likes || []), { id: user.id, name: user.name }];
+    }
+
+    const updatedPostOptimistic = {
+      ...post,
+      likes: newLikes
+    };
+
+    posts[postIndex] = updatedPostOptimistic;
+
+    if (window.posts && !isUserPostsPage) {
+      const globalIndex = window.posts.findIndex(p => p.id === postId);
+      if (globalIndex !== -1) {
+        window.posts[globalIndex] = updatedPostOptimistic;
+      }
+    }
+
+    updatePostUI(postId, updatedPostOptimistic);
+
     toggleLike({ token, postId })
-      .then(() => {
-        goToPage("posts");
+      .then((updatedPostFromServer) => {
+        console.log("=== ОТВЕТ СЕРВЕРА ===");
+        console.log("updatedPostFromServer:", updatedPostFromServer);
+        console.log("likes from server:", updatedPostFromServer?.likes);
+
+        if (updatedPostFromServer && updatedPostFromServer.likes) {
+          posts[postIndex] = updatedPostFromServer;
+
+          if (window.posts && !isUserPostsPage) {
+            const globalIndex = window.posts.findIndex(p => p.id === postId);
+            if (globalIndex !== -1) {
+              window.posts[globalIndex] = updatedPostFromServer;
+            }
+          }
+
+          updatePostUI(postId, updatedPostFromServer);
+          console.log("UI обновлен данными с сервера");
+        }
       })
       .catch((error) => {
         console.error("Ошибка при постановке лайка:", error);
-        alert("Не удалось поставить лайк");
+        alert("Не удалось поставить лайк: " + error.message);
+
+        const restoredPost = {
+          ...post,
+          likes: wasLiked ? post.likes : [...(post.likes || []), { id: user.id, name: user.name }]
+        };
+
+        posts[postIndex] = restoredPost;
+        updatePostUI(postId, restoredPost);
       });
   };
 
-  const handleUserClick = (userId) => {
-    goToPage(USER_POSTS_PAGE, { userId });
+  const handleUserClick = (clickedUserId) => {
+    console.log("Клик по пользователю, userId:", clickedUserId);
+    goToPage(USER_POSTS_PAGE, { userId: clickedUserId });
   };
 
   if (!posts || posts.length === 0) {
@@ -91,8 +198,8 @@ export function renderPostsPageComponent({ appEl, posts, user, goToPage, logout 
   }
 
   const postsHtml = posts.map(post => {
-    const isLiked = post.likes?.some(like => like.id === user?.id);
-    const likesCount = post.likes?.length || 0;
+    const isLiked = isPostLikedByUser(post);
+    const likesCount = getLikesCount(post);
     const likeIcon = isLiked ? "./assets/images/like-active.svg" : "./assets/images/like-not-active.svg";
     const timeAgo = formatDate(post.createdAt);
 
@@ -150,19 +257,25 @@ export function renderPostsPageComponent({ appEl, posts, user, goToPage, logout 
 
   const likeButtons = document.querySelectorAll(".like-button");
   likeButtons.forEach(button => {
-    button.addEventListener("click", (event) => {
+    const newButton = button.cloneNode(true);
+    button.parentNode.replaceChild(newButton, button);
+
+    newButton.addEventListener("click", (event) => {
       event.stopPropagation();
-      const postId = button.dataset.postId;
+      const postId = newButton.dataset.postId;
       handleLike(postId);
     });
   });
 
   const postHeaders = document.querySelectorAll(".post-header");
   postHeaders.forEach(header => {
-    header.addEventListener("click", () => {
-      const userId = header.dataset.userId;
-      if (userId) {
-        handleUserClick(userId);
+    const newHeader = header.cloneNode(true);
+    header.parentNode.replaceChild(newHeader, header);
+
+    newHeader.addEventListener("click", () => {
+      const clickedUserId = newHeader.dataset.userId;
+      if (clickedUserId) {
+        handleUserClick(clickedUserId);
       }
     });
   });
