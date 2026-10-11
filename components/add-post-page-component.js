@@ -25,6 +25,15 @@ export function renderAddPostPageComponent({ appEl, user, goToPage, logout, onAd
     }
   };
 
+  const hideError = () => {
+    errorMessage = "";
+    const errorEl = document.querySelector(".form-error");
+    if (errorEl) {
+      errorEl.textContent = "";
+      errorEl.style.display = "none";
+    }
+  };
+
   const render = () => {
     const appHtml = `
       <div class="page-container">
@@ -39,10 +48,10 @@ export function renderAddPostPageComponent({ appEl, user, goToPage, logout, onAd
               placeholder="Введите описание поста..."
               rows="4"
             >${escapeHtml(description)}</textarea>
-            <div class="form-error" style="color: red; margin-top: 10px; ${!errorMessage ? 'display: none;' : ''}">${errorMessage || ''}</div>
+            <div class="form-error" style="color: red; margin-top: 10px; display: none;"></div>
           </div>
           <div class="form-footer">
-            <button id="submit-post-button" class="button" ${!imageUrl ? 'disabled' : ''}>Опубликовать</button>
+            <button id="submit-post-button" class="button">Опубликовать</button>
             <button id="cancel-button" class="secondary-button">Отмена</button>
           </div>
         </div>
@@ -64,16 +73,7 @@ export function renderAddPostPageComponent({ appEl, user, goToPage, logout, onAd
         element: uploadContainer,
         onImageUrlChange: (url) => {
           imageUrl = url;
-          errorMessage = "";
-          const submitButton = document.getElementById("submit-post-button");
-          if (submitButton) {
-            submitButton.disabled = !imageUrl;
-          }
-          const errorEl = document.querySelector(".form-error");
-          if (errorEl) {
-            errorEl.style.display = "none";
-            errorEl.textContent = "";
-          }
+          hideError();
         },
       });
     }
@@ -84,12 +84,7 @@ export function renderAddPostPageComponent({ appEl, user, goToPage, logout, onAd
       descriptionTextarea.addEventListener("input", (event) => {
         description = event.target.value;
         if (errorMessage) {
-          errorMessage = "";
-          const errorEl = document.querySelector(".form-error");
-          if (errorEl) {
-            errorEl.style.display = "none";
-            errorEl.textContent = "";
-          }
+          hideError();
         }
       });
     }

@@ -21,6 +21,30 @@ export function getPosts({ token }) {
     });
 }
 
+export function deletePost({ token, postId }) {
+  console.log("Удаление поста:", { postId });
+
+  return fetch(`${postsHost}/${postId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: token,
+    },
+  }).then(async (response) => {
+    console.log("Статус ответа удаления:", response.status);
+
+    if (response.status === 401) {
+      throw new Error("Нет авторизации");
+    }
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.message || data.error || "Не удалось удалить пост");
+    }
+
+    return response.json().catch(() => ({}));
+  });
+}
+
 export function registerUser({ login, password, name, imageUrl }) {
   console.log("Регистрация:", { login, name });
 
@@ -136,6 +160,32 @@ export function toggleLike({ token, postId }) {
   console.log("Отправка лайка:", { postId });
 
   return fetch(`${postsHost}/${postId}/like`, {
+    method: "POST",
+    headers: {
+      Authorization: token,
+    },
+  })
+    .then(async (response) => {
+      console.log("Статус ответа лайка:", response.status);
+
+      if (response.status === 401) {
+        throw new Error("Нет авторизации");
+      }
+
+      const data = await response.json();
+      console.log("Ответ сервера лайка:", data);
+
+      if (data.post) {
+        return data.post;
+      }
+      return data;
+    });
+}
+
+export function toggleDislike({ token, postId }) {
+  console.log("Отмена лайка:", { postId });
+
+  return fetch(`${postsHost}/${postId}/dislike`, {
     method: "POST",
     headers: {
       Authorization: token,

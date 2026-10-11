@@ -15,10 +15,7 @@ function escapeHtml(str) {
 export function renderUserPostsPageComponent({ appEl, userId, user, goToPage, logout }) {
   const token = user ? `Bearer ${user.token}` : undefined;
 
-  console.log("renderUserPostsPageComponent вызван, userId:", userId);
-
   if (!userId) {
-    console.error("Нет userId, возвращаемся на главную");
     goToPage("posts");
     return;
   }
@@ -45,8 +42,6 @@ export function renderUserPostsPageComponent({ appEl, userId, user, goToPage, lo
 
   loadUserPosts()
     .then((data) => {
-      console.log("Данные получены:", data);
-
       const userInfo = data.user;
       let currentPosts = data.posts || [];
 
@@ -79,7 +74,8 @@ export function renderUserPostsPageComponent({ appEl, userId, user, goToPage, lo
         const postsContainer = document.getElementById("user-posts-container");
         if (postsContainer) {
           if (currentPosts.length === 0) {
-            postsContainer.innerHTML = '<p style="text-align: center; padding: 40px;">У пользователя пока нет постов</p>';
+            postsContainer.innerHTML =
+              '<p style="text-align: center; padding: 40px;">У пользователя пока нет постов</p>';
           } else {
             renderPostsPageComponent({
               appEl: postsContainer,
@@ -99,6 +95,12 @@ export function renderUserPostsPageComponent({ appEl, userId, user, goToPage, lo
               },
               isUserPostsPage: true,
               userId: userId,
+              onDeletePost: (postId) => {
+                currentPosts = currentPosts.filter((p) => p.id !== postId);
+                if (currentPosts.length === 0) {
+                  renderUserContent();
+                }
+              },
             });
           }
         }
