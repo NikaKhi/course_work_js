@@ -1,9 +1,38 @@
 import { renderHeaderComponent } from "./header-component.js";
 import { renderUploadImageComponent } from "./upload-image-component.js";
 
+function escapeHtml(str) {
+  if (!str) return "";
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export function renderAddPostPageComponent({ appEl, user, goToPage, logout, onAddPostClick }) {
   let imageUrl = "";
   let description = "";
+  let errorMessage = "";
+
+  const showError = (message) => {
+    errorMessage = message;
+    const errorEl = document.querySelector(".form-error");
+    if (errorEl) {
+      errorEl.textContent = message;
+      errorEl.style.display = "block";
+    }
+  };
+
+  const hideError = () => {
+    errorMessage = "";
+    const errorEl = document.querySelector(".form-error");
+    if (errorEl) {
+      errorEl.textContent = "";
+      errorEl.style.display = "none";
+    }
+  };
 
   const render = () => {
     const appHtml = `
@@ -18,10 +47,11 @@ export function renderAddPostPageComponent({ appEl, user, goToPage, logout, onAd
               class="input textarea" 
               placeholder="Введите описание поста..."
               rows="4"
-            ></textarea>
+            >${escapeHtml(description)}</textarea>
+            <div class="form-error" style="color: red; margin-top: 10px; display: none;"></div>
           </div>
           <div class="form-footer">
-            <button id="submit-post-button" class="button" disabled>Опубликовать</button>
+            <button id="submit-post-button" class="button">Опубликовать</button>
             <button id="cancel-button" class="secondary-button">Отмена</button>
           </div>
         </div>
@@ -43,18 +73,19 @@ export function renderAddPostPageComponent({ appEl, user, goToPage, logout, onAd
         element: uploadContainer,
         onImageUrlChange: (url) => {
           imageUrl = url;
-          const submitButton = document.getElementById("submit-post-button");
-          if (submitButton) {
-            submitButton.disabled = !imageUrl;
-          }
+          hideError();
         },
       });
     }
 
     const descriptionTextarea = document.getElementById("post-description");
     if (descriptionTextarea) {
+      descriptionTextarea.value = description;
       descriptionTextarea.addEventListener("input", (event) => {
         description = event.target.value;
+        if (errorMessage) {
+          hideError();
+        }
       });
     }
 
@@ -62,7 +93,12 @@ export function renderAddPostPageComponent({ appEl, user, goToPage, logout, onAd
     if (submitButton) {
       submitButton.addEventListener("click", () => {
         if (!imageUrl) {
-          alert("Сначала загрузите изображение");
+          showError("Выберите фото для поста");
+          return;
+        }
+
+        if (!description.trim()) {
+          showError("Введите описание поста");
           return;
         }
 

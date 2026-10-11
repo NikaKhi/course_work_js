@@ -46,6 +46,46 @@
   margin: 0;
 }
 
+.post {
+  position: relative;
+}
+
+.post-delete-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.post-delete-button:hover {
+  background: rgba(220, 38, 38, 0.85);
+  transform: scale(1.05);
+}
+
+.post-delete-button:active {
+  transform: scale(0.95);
+}
+
+.post-delete-button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
 .post-header {
   display: flex;
   flex-direction: row;

@@ -9,10 +9,10 @@ export function renderUploadImageComponent({ element, onImageUrlChange }) {
         ${imageUrl ? `
           <div class="file-upload-image-container">
             <img class="file-upload-image" src="${imageUrl}" alt="Загруженное изображение">
-            <button class="file-upload-remove-button button">Заменить фото</button>
+            <button class="file-upload-remove-button secondary-button" style="margin-left: 10px;">Заменить фото</button>
           </div>
         ` : `
-          <label class="file-upload-label secondary-button" id="file-upload-label">
+          <label class="file-upload-label secondary-button" style="cursor: pointer; display: inline-block;">
             <input type="file" class="file-upload-input" style="display:none" accept="image/*" />
             Выберите фото
           </label>
@@ -22,28 +22,31 @@ export function renderUploadImageComponent({ element, onImageUrlChange }) {
 
     const fileInputElement = element.querySelector(".file-upload-input");
     if (fileInputElement) {
-      fileInputElement.addEventListener("change", () => {
-        const file = fileInputElement.files[0];
+      fileInputElement.addEventListener("change", (event) => {
+        const file = event.target.files[0];
         if (file) {
-          const labelEl = document.getElementById("file-upload-label");
+          const labelEl = element.querySelector(".file-upload-label");
           if (labelEl) {
-            labelEl.setAttribute("disabled", true);
             labelEl.textContent = "Загружаю файл...";
+            labelEl.style.pointerEvents = "none";
           }
 
           uploadImage({ file })
-            .then(({ fileUrl }) => {
-              imageUrl = fileUrl;
-              onImageUrlChange(imageUrl);
-              render();
+            .then((response) => {
+              console.log("Ответ сервера при загрузке:", response);
+              const uploadedUrl = response.fileUrl || response.url || response;
+              if (typeof uploadedUrl === 'string' && uploadedUrl.startsWith('http')) {
+                imageUrl = uploadedUrl;
+                onImageUrlChange(imageUrl);
+                render();
+              } else {
+                throw new Error("Не удалось получить ссылку на изображение");
+              }
             })
             .catch((error) => {
               console.error("Ошибка загрузки:", error);
-              alert("Не удалось загрузить изображение");
-              if (labelEl) {
-                labelEl.removeAttribute("disabled");
-                labelEl.textContent = "Выберите фото";
-              }
+              alert("Не удалось загрузить изображение: " + (error.message || "попробуйте другой файл"));
+              render();
             });
         }
       });
